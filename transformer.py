@@ -41,7 +41,7 @@ vocab_size = tokenizer.vocab_size
 encode = lambda str1: tokenizer(str1)['input_ids']
 decode = lambda list1: tokenizer.decode(list1)
 
-data = torch.tensor(encoder(text))
+data = torch.tensor(encode(text))
 n = int(0.9 * len(data))
 train_data = data[:n]
 val_data = data[n:]

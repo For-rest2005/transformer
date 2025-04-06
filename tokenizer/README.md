@@ -1,2 +1,2 @@
 ### Tokenizer
-Tokenizer from bert-base-chinese
+Tokenizer from Qwen2.5
