@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import random
-# import textwrap
+from transformers import AutoTokenizer
 
 #hparam
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -10,7 +10,7 @@ block_size = 1024
 batch_size = 2
 n_embd = 256
 learning_rate = 0.03
-max_iters = 2000
+max_iters = 10
 eval_interval = int(max_iters/10)
 eval_iters = 20
 dropout_value = 0.1
@@ -21,20 +21,27 @@ max_new_tokens = 512
 
 torch.manual_seed(1337)
 file_name = "dataset.txt"
-# file_name = "short.txt"
+tokenizer_path = "./tokenizer"
 
 with open(file_name, 'r', encoding='utf-8') as f:
     text = f.read()
 
-chars = sorted(list(set(text)))
-vocab_size = len(chars)
+# chars = sorted(list(set(text)))
+# vocab_size = len(chars)
 
-stoi = {ch:i for i,ch in enumerate(chars)}
-itos = {i:ch for i,ch in enumerate(chars)}
-encode = lambda str1: [stoi[c] for c in str1] #string to number string
-decode = lambda list1: "".join([itos[i] for i in list1])
+# stoi = {ch:i for i,ch in enumerate(chars)}
+# itos = {i:ch for i,ch in enumerate(chars)}
+# encode = lambda str1: [stoi[c] for c in str1] #string to number string
+# decode = lambda list1: "".join([itos[i] for i in list1])
 
-data = torch.tensor(encode(text))
+tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+print("Tokenizer load successfully")
+
+vocab_size = tokenizer.vocab_size
+encode = lambda str1: tokenizer(str1)['input_ids']
+decode = lambda list1: tokenizer.decode(list1)
+
+data = tokenizer(text[:131072])['input_ids']
 n = int(0.9 * len(data))
 train_data = data[:n]
 val_data = data[n:]
