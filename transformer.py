@@ -3,43 +3,44 @@ import torch.nn as nn
 from torch.nn import functional as F
 import random
 from transformers import AutoTokenizer
+import os
 
 #hparam
 device = "cuda" if torch.cuda.is_available() else "cpu"
-block_size = 1024
-batch_size = 2
-n_embd = 256
-learning_rate = 0.03
-max_iters = 10
+block_size = 256
+batch_size = 1024
+n_embd = 512
+learning_rate = 0.005
+max_iters = 50
 eval_interval = int(max_iters/10)
-eval_iters = 20
+eval_iters = 10
 dropout_value = 0.1
-num_heads = 16
+num_heads = 6
 head_size = n_embd // num_heads
-n_layer = 16
-max_new_tokens = 512
+n_layer = 4
+max_new_tokens = 128
 
-torch.manual_seed(1337)
+# torch.manual_seed(1337)
 file_name = "dataset.txt"
 tokenizer_path = "./tokenizer"
 
 with open(file_name, 'r', encoding='utf-8') as f:
     text = f.read()
 
-# chars = sorted(list(set(text)))
-# vocab_size = len(chars)
+chars = sorted(list(set(text)))
+vocab_size = len(chars)
 
-# stoi = {ch:i for i,ch in enumerate(chars)}
-# itos = {i:ch for i,ch in enumerate(chars)}
-# encode = lambda str1: [stoi[c] for c in str1] #string to number string
-# decode = lambda list1: "".join([itos[i] for i in list1])
+stoi = {ch:i for i,ch in enumerate(chars)}
+itos = {i:ch for i,ch in enumerate(chars)}
+encode = lambda str1: [stoi[c] for c in str1] #string to number string
+decode = lambda list1: "".join([itos[i] for i in list1])
 
-tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-print("Tokenizer load successfully")
+#tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+#print("Tokenizer load successfully")
 
-vocab_size = tokenizer.vocab_size
-encode = lambda str1: tokenizer(str1)['input_ids']
-decode = lambda list1: tokenizer.decode(list1)
+#vocab_size = tokenizer.vocab_size
+#encode = lambda str1: tokenizer(str1)['input_ids']
+#decode = lambda list1: tokenizer.decode(list1)
 
 data = torch.tensor(encode(text))
 n = int(0.9 * len(data))
@@ -172,15 +173,28 @@ def estimate_loss(model):
     model.train()
     return out
 
+def load_checkpoint(path, model, optimizer):
+    if os.path.exists(path):
+        checkpoint = torch.load(path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+def save_checkpoint(path, model, optimizer):
+    checkpoint = {
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict()
+    }
+    torch.save(checkpoint, path)
+
 def main():
     # x, y = get_batch("train")
-
+    checkpoint_path = "./checkpoint.pth"
     model = LanguageModel()
-    model = model.to(device)
-    print(sum(p.numel() for p in model.parameters())/1e6, "M parameters")
-
-    #opt
+    model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    load_checkpoint(checkpoint_path, model, optimizer)
+
+    print(sum(p.numel() for p in model.parameters())/1e6, "M parameters")
 
     for i in range(max_iters):
         print(i)
@@ -209,9 +223,10 @@ def main():
     generated_tokens = model.generate(context, max_new_tokens)
     generated_str = decode(generated_tokens[0].tolist())
 
-
     print("context:\n",context_str)
     print("real_next:\n",real_next_tokens_str)
     print("generated:\n",generated_str)
+
+    save_checkpoint(checkpoint_path, model, optimizer)
 
 main()
